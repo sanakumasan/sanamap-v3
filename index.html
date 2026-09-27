@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>SANA MAP V3</title>
+  <link rel="stylesheet" href="https://unpkg.com" />
+  <style>
+    html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #e5e7eb; }
+    .btn { position: absolute; bottom: 40px; left: 10%; width: 80%; z-index: 1000; padding: 15px; background: #111827; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <button class="btn" onclick="alert('ボタンは正常に動いています！')">📍 ピンを追加（テスト）</button>
+
+  <script src="https://unpkg.com"></script>
+  <script>
+    window.addEventListener('load', () => {
+        const map = L.map('map', { zoomControl: false }).setView([35.681236, 139.767125], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+        setTimeout(() => { map.invalidateSize(true); }, 300);
+    });
+  </script>
+</body>
+</html>
