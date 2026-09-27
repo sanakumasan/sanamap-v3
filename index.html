@@ -3,29 +3,37 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>SANA MAP TEST</title>
-  <link rel="stylesheet" href="https://cloudflare.com" />
+  <title>SANA MAP V3</title>
   <style>
-    html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #e5e7eb; }
-    .btn { position: absolute; bottom: 40px; left: 10%; width: 80%; z-index: 1000; padding: 15px; background: #111827; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; text-align: center; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+      background-color: #e5e7eb; font-family: -apple-system, sans-serif;
+    }
+    /* 地図を画面いっぱいに表示する設定 */
+    #map-container {
+      position: absolute; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 1;
+    }
+    iframe {
+      width: 100%; height: 100%; border: none;
+    }
+    .btn {
+      position: absolute; bottom: 40px; left: 10%; width: 80%;
+      z-index: 1000; padding: 15px; background: #111827; color: white;
+      border: none; border-radius: 12px; font-weight: bold; font-size: 16px;
+      text-align: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <button class="btn" onclick="alert('通信テスト完了！')">📍 ピンを追加（テスト）</button>
 
-  <script src="https://cloudflare.com"></script>
-  <script>
-    window.addEventListener('load', () => {
-        const map = L.map('map', { zoomControl: false }).setView([35.681236, 139.767125], 13);
-        
-        // [ブロック対策テスト] 外部の地図画像を一切使わず、GitHubが公式に持っている「アバター画像」を地図の代わりに敷き詰めます
-        L.tileLayer('https://github.com{x}.png', {
-            minZoom: 0,
-            maxZoom: 5,
-            attribution: 'Test'
-        }).addTo(map);
-    });
-  </script>
+  <!-- [最終対策] 外部のプログラム(JS)を一切読み込まず、安全なiframe（埋め込み）だけで本物の地図を強制表示 -->
+  <div id="map-container">
+    <iframe src="https://google.com"></iframe>
+  </div>
+
+  <button class="btn" onclick="alert('地図システムの起動に成功しました！')">📍 ピンを追加（テスト）</button>
+
 </body>
 </html>
