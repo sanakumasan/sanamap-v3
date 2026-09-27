@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>SANA MAP V3</title>
-  <!-- 確実に読み込めるLeafletファイル -->
+  <title>SANA MAP TEST</title>
   <link rel="stylesheet" href="https://cloudflare.com" />
   <style>
     html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #e5e7eb; }
@@ -13,22 +12,19 @@
 </head>
 <body>
   <div id="map"></div>
-  <button class="btn" onclick="alert('ボタンは正常に動いています！')">📍 ピンを追加（テスト）</button>
+  <button class="btn" onclick="alert('通信テスト完了！')">📍 ピンを追加（テスト）</button>
 
   <script src="https://cloudflare.com"></script>
   <script>
     window.addEventListener('load', () => {
-        // 地図を初期化
         const map = L.map('map', { zoomControl: false }).setView([35.681236, 139.767125], 13);
         
-        // [超重要] 海外サーバーではなく、iPhoneが絶対に拒否しない日本政府（国土地理院）の公式URLに変更
-        L.tileLayer('https://gsi.go.jp{z}/{x}/{y}.png', {
-            minZoom: 2,
-            maxZoom: 18,
-            attribution: '&copy; 国土地理院'
+        // [ブロック対策テスト] 外部の地図画像を一切使わず、GitHubが公式に持っている「アバター画像」を地図の代わりに敷き詰めます
+        L.tileLayer('https://github.com{x}.png', {
+            minZoom: 0,
+            maxZoom: 5,
+            attribution: 'Test'
         }).addTo(map);
-
-        setTimeout(() => { map.invalidateSize(true); }, 300);
     });
   </script>
 </body>
