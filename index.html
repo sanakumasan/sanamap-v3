@@ -113,7 +113,7 @@
       color: white;
     }
 
-    /* 🔵 現在地用のわかりやすいカスタムアニメーション付きマーカー */
+    /* 🔵 現在地用のアニメーション付きマーカー */
     .current-location-marker {
       position: relative;
     }
@@ -157,6 +157,102 @@
         opacity: 0;
       }
     }
+
+    /* 📋 保存一覧モーダル画面のスタイル */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: #ffffff;
+      width: 85%;
+      max-width: 400px;
+      max-height: 70vh;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 10px;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 18px;
+      color: #111827;
+    }
+
+    .close-modal-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      box-shadow: none;
+      cursor: pointer;
+      color: #6b7280;
+      padding: 0;
+    }
+
+    .modal-body {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .list-item-info {
+      flex: 1;
+      padding-right: 10px;
+    }
+
+    .list-item-title {
+      font-weight: bold;
+      font-size: 14px;
+      color: #1f2937;
+      word-break: break-all;
+    }
+
+    .list-item-coords {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .jump-btn {
+      background-color: #2563eb;
+      color: white;
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+
+    .empty-list-text {
+      text-align: center;
+      color: #6b7280;
+      padding: 20px 0;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -174,17 +270,35 @@
     <button class="white-btn" id="backup-btn">📥 バックアップ</button>
   </div>
 
+  <!-- 📋 保存一覧表示用モーダルダイアログ -->
+  <div class="modal-overlay" id="list-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📋 保存されたピン一覧</h3>
+        <button class="close-modal-btn" id="close-modal-btn">✕</button>
+      </div>
+      <div class="modal-body" id="modal-list-container">
+        <!-- JSで動的に一覧を挿入 -->
+      </div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
     window.addEventListener('load', () => {
       let isAddPinMode = false;
-      let currentLocationMarker = null; // 現在地マーカー保持用
+      let currentLocationMarker = null;
+      const markerMap = new Map(); // ピンのインスタンス保持用
+
       const addPinBtn = document.getElementById('add-pin-btn');
       const searchInput = document.getElementById('search-input');
       const mapContainer = document.getElementById('map');
+      const listModal = document.getElementById('list-modal');
+      const closeModalBtn = document.getElementById('close-modal-btn');
+      const modalListContainer = document.getElementById('modal-list-container');
 
-      // データのローカルストレージ管理用配列
+      // ローカルストレージ管理用
       let savedPins = JSON.parse(localStorage.getItem('sanamap_pins')) || [];
 
       // マップ初期化
@@ -194,12 +308,10 @@
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
 
-      // ストレージ保存処理
       function saveToStorage() {
         localStorage.setItem('sanamap_pins', JSON.stringify(savedPins));
       }
 
-      // ポップアップHTML作成
       function createPopupContent(comment) {
         const container = document.createElement('div');
         container.innerHTML = `
@@ -213,14 +325,13 @@
         return container;
       }
 
-      // ピン生成処理（データ連動）
       function addInteractiveMarker(pinData) {
         const marker = L.marker([pinData.lat, pinData.lng], { draggable: true }).addTo(map);
-        
+        markerMap.set(pinData.id, marker);
+
         const popupContent = createPopupContent(pinData.comment);
         marker.bindPopup(popupContent);
 
-        // ドラッグ移動した時に位置情報を更新して保存
         marker.on('dragend', (e) => {
           const newLatLng = e.target.getLatLng();
           pinData.lat = newLatLng.lat;
@@ -228,11 +339,9 @@
           saveToStorage();
         });
 
-        // ポップアップの編集・削除処理
         marker.on('popupopen', () => {
           const popupElement = marker.getPopup().getElement();
           
-          // 編集
           const editBtn = popupElement.querySelector('.edit-btn');
           editBtn.onclick = () => {
             const newComment = prompt("コメントを編集してください：", pinData.comment);
@@ -243,11 +352,11 @@
             }
           };
 
-          // 削除
           const deleteBtn = popupElement.querySelector('.delete-btn');
           deleteBtn.onclick = () => {
             if (confirm("このピンを削除してもよろしいですか？")) {
               map.removeLayer(marker);
+              markerMap.delete(pinData.id);
               savedPins = savedPins.filter(p => p.id !== pinData.id);
               saveToStorage();
             }
@@ -257,12 +366,12 @@
         return marker;
       }
 
-      // 初回読み込み時に過去のピンを復元
+      // 初回復元
       savedPins.forEach(pinData => {
         addInteractiveMarker(pinData);
       });
 
-      // 🔍 場所検索・ジャンプ機能
+      // 検索機能
       async function searchLocation(query) {
         if (!query.trim()) return;
 
@@ -291,7 +400,7 @@
         }
       });
 
-      // ピン追加モード切り替え
+      // ピン追加モード
       addPinBtn.addEventListener('click', (e) => {
         e.preventDefault();
         isAddPinMode = !isAddPinMode;
@@ -307,7 +416,7 @@
         }
       });
 
-      // 地図タップでピンを追加・保存
+      // 地図タップでピン追加
       map.on('click', (e) => {
         if (!isAddPinMode) return;
 
@@ -334,7 +443,7 @@
         mapContainer.classList.remove('pin-mode-active');
       });
 
-      // 🔵 現在地ボタン（アニメーション付き現在地アイコンを表示）
+      // 現在地ボタン
       document.getElementById('current-location-btn').addEventListener('click', (e) => {
         e.preventDefault();
         if ("geolocation" in navigator) {
@@ -342,12 +451,10 @@
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
 
-            // 既存の現在地マーカーがあれば削除
             if (currentLocationMarker) {
               map.removeLayer(currentLocationMarker);
             }
 
-            //青い波紋アイコン（DivIcon）を作成
             const locationIcon = L.divIcon({
               className: 'current-location-marker',
               html: `
@@ -358,12 +465,10 @@
               iconAnchor: [20, 20]
             });
 
-            // 現在地にマーカーを設置
             currentLocationMarker = L.marker([lat, lng], { icon: locationIcon })
               .addTo(map)
               .bindPopup("📍 現在地");
 
-            // 滑らかに移動してポップアップ表示
             map.flyTo([lat, lng], 16, { duration: 1.5 });
             currentLocationMarker.openPopup();
 
@@ -375,9 +480,50 @@
         }
       });
 
-      // 保存一覧ボタン
+      // 📋 保存一覧を表示する処理
       document.getElementById('list-btn').addEventListener('click', () => {
-        alert(`現在 ${savedPins.length} 件のピンが保存されています。`);
+        modalListContainer.innerHTML = '';
+
+        if (savedPins.length === 0) {
+          modalListContainer.innerHTML = '<div class="empty-list-text">保存されたピンはありません。</div>';
+        } else {
+          savedPins.forEach((pin, index) => {
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            item.innerHTML = `
+              <div class="list-item-info">
+                <div class="list-item-title">${index + 1}. ${pin.comment}</div>
+                <div class="list-item-coords">緯度: ${pin.lat.toFixed(4)}, 経度: ${pin.lng.toFixed(4)}</div>
+              </div>
+              <button class="jump-btn">📍 移動</button>
+            `;
+
+            // 移動ボタンを押すと該当のピンまでジャンプしてポップアップを開く
+            item.querySelector('.jump-btn').onclick = () => {
+              listModal.style.display = 'none';
+              map.flyTo([pin.lat, pin.lng], 16, { duration: 1.5 });
+              const marker = markerMap.get(pin.id);
+              if (marker) {
+                marker.openPopup();
+              }
+            };
+
+            modalListContainer.appendChild(item);
+          });
+        }
+
+        listModal.style.display = 'flex';
+      });
+
+      // モーダルを閉じる処理
+      closeModalBtn.addEventListener('click', () => {
+        listModal.style.display = 'none';
+      });
+
+      listModal.addEventListener('click', (e) => {
+        if (e.target === listModal) {
+          listModal.style.display = 'none';
+        }
       });
 
       // バックアップボタン
