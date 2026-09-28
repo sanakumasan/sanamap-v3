@@ -293,6 +293,7 @@
       let isAddPinMode = false;
       let currentLocationMarker = null;
       let searchResultMarker = null;
+      let routeLine = null;
       const markerMap = new Map();
 
       const addPinBtn = document.getElementById('add-pin-btn');
@@ -328,60 +329,101 @@
         localStorage.setItem('sanamap_pins', JSON.stringify(savedPins));
       }
 
-      function createPopupContent(comment) {
-        const container = document.createElement('div');
-        container.innerHTML = `
-          <b>📌 記録されたコメント:</b><br>
-          <span class="comment-text">${comment}</span>
-          <div class="popup-actions">
-            <button class="edit-btn">✏️ 編集</button>
-            <button class="delete-btn">🗑️ 削除</button>
-          </div>
-        `;
-        return container;
-      }
+      function createPopupContent(comment, lat, lng) {
+  const container = document.createElement('div');
+  
+  // GoogleマップのナビURL（現在地から目的地までのルートを開く）
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
 
-      // ピン追加用の関数
-      function addInteractiveMarker(pinData) {
-        const marker = L.marker([pinData.lat, pinData.lng], { icon: highlightIcon, draggable: true }).addTo(map);
-        markerMap.set(pinData.id, marker);
+  container.innerHTML = `
+    <b>📌 記録されたコメント:</b><br>
+    <span class="comment-text">${comment}</span>
+    <div class="popup-actions" style="margin-top: 8px; display: flex; flex-direction: column; gap: 4px;">
+      <a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+        <button style="width: 100%; background-color: #4285F4; color: white; padding: 6px; border-radius: 6px; font-weight: bold;">
+          🧭 Googleマップでナビ開始
+        </button>
+      </a>
+      <div style="display: flex; gap: 4px;">
+        <button class="edit-btn" style="flex: 1;">✏️ 編集</button>
+        <button class="delete-btn" style="flex: 1;">🗑️ 削除</button>
+      </div>
+    </div>
+  `;
+  return container;
+}
 
-        const popupContent = createPopupContent(pinData.comment);
-        marker.bindPopup(popupContent);
+      // ピン追加用の関数（アプリ内ガイド線＋Googleマップ連携に対応）
+function addInteractiveMarker(pinData) {
+  const marker = L.marker([pinData.lat, pinData.lng], { icon: highlightIcon, draggable: true }).addTo(map);
+  markerMap.set(pinData.id, marker);
 
-        marker.on('dragend', (e) => {
-          const newLatLng = e.target.getLatLng();
-          pinData.lat = newLatLng.lat;
-          pinData.lng = newLatLng.lng;
+  // 1. createPopupContent に pinData.lat と pinData.lng を追加して渡す
+  const popupContent = createPopupContent(pinData.comment, pinData.lat, pinData.lng);
+  marker.bindPopup(popupContent);
+
+  // 2. ピンをクリックした時にアプリ内でガイド線を引く処理を追加
+  marker.on('click', () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const currentLat = position.coords.latitude;
+        const currentLng = position.coords.longitude;
+
+        if (routeLine) {
+          map.removeLayer(routeLine);
+        }
+
+        routeLine = L.polyline([
+          [currentLat, currentLng],
+          [pinData.lat, pinData.lng]
+        ], {
+          color: '#2563eb',
+          weight: 4,
+          opacity: 0.8,
+          dashArray: '8, 8'
+        }).addTo(map);
+      });
+    }
+  });
+
+  marker.on('dragend', (e) => {
+    const newLatLng = e.target.getLatLng();
+    pinData.lat = newLatLng.lat;
+    pinData.lng = newLatLng.lng;
+    saveToStorage();
+  });
+
+  marker.on('popupopen', () => {
+    const popupElement = marker.getPopup().getElement();
+    
+    const editBtn = popupElement.querySelector('.edit-btn');
+    if (editBtn) {
+      editBtn.onclick = () => {
+        const newComment = prompt("コメントを編集してください：", pinData.comment);
+        if (newComment !== null && newComment.trim() !== "") {
+          pinData.comment = newComment.trim();
+          popupElement.querySelector('.comment-text').textContent = pinData.comment;
           saveToStorage();
-        });
+        }
+      };
+    }
 
-        marker.on('popupopen', () => {
-          const popupElement = marker.getPopup().getElement();
-          
-          const editBtn = popupElement.querySelector('.edit-btn');
-          editBtn.onclick = () => {
-            const newComment = prompt("コメントを編集してください：", pinData.comment);
-            if (newComment !== null && newComment.trim() !== "") {
-              pinData.comment = newComment.trim();
-              popupElement.querySelector('.comment-text').textContent = pinData.comment;
-              saveToStorage();
-            }
-          };
+    const deleteBtn = popupElement.querySelector('.delete-btn');
+    if (deleteBtn) {
+      deleteBtn.onclick = () => {
+        if (confirm("このピンを削除してもよろしいですか？")) {
+          map.removeLayer(marker);
+          markerMap.delete(pinData.id);
+          savedPins = savedPins.filter(p => p.id !== pinData.id);
+          saveToStorage();
+          if (routeLine) map.removeLayer(routeLine);
+        }
+      };
+    }
+  });
 
-          const deleteBtn = popupElement.querySelector('.delete-btn');
-          deleteBtn.onclick = () => {
-            if (confirm("このピンを削除してもよろしいですか？")) {
-              map.removeLayer(marker);
-              markerMap.delete(pinData.id);
-              savedPins = savedPins.filter(p => p.id !== pinData.id);
-              saveToStorage();
-            }
-          };
-        });
-
-        return marker;
-      }
+  return marker;
+}
 
       savedPins.forEach(pinData => {
         addInteractiveMarker(pinData);
