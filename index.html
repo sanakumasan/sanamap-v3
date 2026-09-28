@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>SANA MAP V3</title>
   
+  <!-- PWA (ホーム画面追加・アプリ化) 用の設定 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SANA MAP">
+  <link rel="apple-touch-icon" href="https://leafletjs.com/docs/images/logo.png">
+
   <!-- Leaflet（無料マップライブラリ）のスタイルシート -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
@@ -113,7 +120,6 @@
       color: white;
     }
 
-    /* 🔵 現在地用のアニメーション付きマーカー */
     .current-location-marker {
       position: relative;
     }
@@ -158,7 +164,6 @@
       }
     }
 
-    /* 📋 保存一覧モーダル画面のスタイル */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -270,7 +275,6 @@
     <button class="white-btn" id="backup-btn">📥 バックアップ</button>
   </div>
 
-  <!-- 📋 保存一覧表示用モーダルダイアログ -->
   <div class="modal-overlay" id="list-modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -278,7 +282,6 @@
         <button class="close-modal-btn" id="close-modal-btn">✕</button>
       </div>
       <div class="modal-body" id="modal-list-container">
-        <!-- JSで動的に一覧を挿入 -->
       </div>
     </div>
   </div>
@@ -289,7 +292,7 @@
     window.addEventListener('load', () => {
       let isAddPinMode = false;
       let currentLocationMarker = null;
-      const markerMap = new Map(); // ピンのインスタンス保持用
+      const markerMap = new Map();
 
       const addPinBtn = document.getElementById('add-pin-btn');
       const searchInput = document.getElementById('search-input');
@@ -298,10 +301,8 @@
       const closeModalBtn = document.getElementById('close-modal-btn');
       const modalListContainer = document.getElementById('modal-list-container');
 
-      // ローカルストレージ管理用
       let savedPins = JSON.parse(localStorage.getItem('sanamap_pins')) || [];
 
-      // マップ初期化
       const map = L.map('map').setView([35.6812, 139.7671], 13);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -366,12 +367,10 @@
         return marker;
       }
 
-      // 初回復元
       savedPins.forEach(pinData => {
         addInteractiveMarker(pinData);
       });
 
-      // 検索機能
       async function searchLocation(query) {
         if (!query.trim()) return;
 
@@ -400,7 +399,6 @@
         }
       });
 
-      // ピン追加モード
       addPinBtn.addEventListener('click', (e) => {
         e.preventDefault();
         isAddPinMode = !isAddPinMode;
@@ -416,7 +414,6 @@
         }
       });
 
-      // 地図タップでピン追加
       map.on('click', (e) => {
         if (!isAddPinMode) return;
 
@@ -443,7 +440,6 @@
         mapContainer.classList.remove('pin-mode-active');
       });
 
-      // 現在地ボタン
       document.getElementById('current-location-btn').addEventListener('click', (e) => {
         e.preventDefault();
         if ("geolocation" in navigator) {
@@ -480,7 +476,6 @@
         }
       });
 
-      // 📋 保存一覧を表示する処理
       document.getElementById('list-btn').addEventListener('click', () => {
         modalListContainer.innerHTML = '';
 
@@ -498,7 +493,6 @@
               <button class="jump-btn">📍 移動</button>
             `;
 
-            // 移動ボタンを押すと該当のピンまでジャンプしてポップアップを開く
             item.querySelector('.jump-btn').onclick = () => {
               listModal.style.display = 'none';
               map.flyTo([pin.lat, pin.lng], 16, { duration: 1.5 });
@@ -515,7 +509,6 @@
         listModal.style.display = 'flex';
       });
 
-      // モーダルを閉じる処理
       closeModalBtn.addEventListener('click', () => {
         listModal.style.display = 'none';
       });
@@ -526,7 +519,6 @@
         }
       });
 
-      // バックアップボタン
       document.getElementById('backup-btn').addEventListener('click', () => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedPins, null, 2));
         const downloadAnchor = document.createElement('a');
