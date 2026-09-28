@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>SANA MAP V3 - ULTIMATE</title>
+  <title>SANA MAP V3 - REVEAL</title>
 
-  <!-- [最強の通信ブロック対策] 外部サーバーからのCSS通信を完全に廃止し、地図用のデザインをここに直接埋め込みました -->
+  <!-- 地図用の基本デザイン（ここに直接埋め込んであります） -->
   <style>
     .leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}.leaflet-container{overflow:hidden;-webkit-tap-highlight-color:transparent}.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-user-drag:none}.leaflet-tile{filter:inherit;visibility:hidden}.leaflet-tile-loaded{visibility:inherit}.leaflet-overlay-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-shadow-pane{z-index:500}.leaflet-marker-pane{z-index:600}.leaflet-popup-pane{z-index:700}.leaflet-map-pane canvas{z-index:100}.leaflet-map-pane svg{z-index:200}.leaflet-popup{position:absolute;text-align:center;margin-bottom:20px}.leaflet-popup-content-wrapper{padding:1px;text-align:left;border-radius:12px;background:#fff;box-shadow:0 3px 14px rgba(0,0,0,0.4)}.leaflet-popup-content{margin:13px 24px;line-height:1.3;font-size:13px;min-width:50px}.leaflet-popup-close-button{position:absolute;top:0;right:0;border:none;background:0 0;padding:4px 4px 0 0;text-align:center;width:24px;height:24px;font:16px/24px Tahoma,sans-serif;color:#c3c3c3;text-decoration:none;font-weight:700;cursor:pointer}
 
@@ -36,47 +36,38 @@
     .white-btn { background-color: #ffffff; color: #1f2937; border: 1px solid #e5e7eb; }
     .active-btn { background-color: #ef4444 !important; color: white; }
     
-    /* タップした場所に表示する、通信不要のオリジナル画像ピン */
     .custom-html-pin {
-      position: absolute;
-      font-size: 30px;
-      transform: translate(-50%, -100%);
-      z-index: 600;
-      cursor: pointer;
+      position: absolute; font-size: 30px; transform: translate(-50%, -100%); z-index: 600; cursor: pointer;
     }
   </style>
 
-  <!-- [最終兵器] 外部サーバーからのJS通信も完全に廃止し、超軽量版の地図制御エンジンをここに直接「文字データ」として埋め込みました -->
+  <!-- 地図制御エンジン -->
   <script>
-    !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t=self).L={})}(this,(function(t){"use strict";t.Map=function(t){this._container=document.getElementById(t),this._panes={};var e=document.createElement("div");e.className="leaflet-map-pane",this._container.appendChild(e);var i=document.createElement("div");i.className="leaflet-tile-pane",e.appendChild(i),this._panes.tilePane=i;var n=document.createElement("div");n.className="leaflet-marker-pane",e.appendChild(n),this._panes.markerPane=n;this.setView=function(t,e){return this._latlng=t,this._zoom=e,this._render(),this},this._render=function(){this._panes.tilePane.innerHTML="";var t=14,i=Math.pow(2,t),n=Math.floor((this._latlng[1]+180)/360*i),o=Math.floor((1-Math.log(Math.tan(this._latlng[0]*Math.PI/180)+1/Math.cos(this._latlng[0]*Math.PI/180))/Math.PI)/2*i);for(var s=-1;s<=1;s++)for(var r=-1;r<=1;r++){var a=document.createElement("img");a.className="leaflet-tile leaflet-tile-loaded",a.style.width="256px",a.style.height="256px",a.style.left=(window.innerWidth/2+(s*256)-128)+"px",a.style.top=(window.innerHeight/2+(r*256)-128)+"px",a.src=`https://gsi.go.jp{t}/${n+s}/${o+r}.png`,this._panes.tilePane.appendChild(a)}},this.invalidateSize=function(){},this.on=function(t,e){this._container.addEventListener(t,e)}};t.tileLayer=function(){return{addTo:function(){}}};t.map=function(e,i){return new t.Map(e,i)}}));
+    !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t=self).L={})}(this,(function(t){"use strict";t.Map=function(t){this._container=document.getElementById(t),this._panes={};var e=document.createElement("div");e.className="leaflet-map-pane",this._container.appendChild(e);var i=document.createElement("div");i.className="leaflet-tile-pane",e.appendChild(i),this._panes.tilePane=i;var n=document.createElement("div");n.className="leaflet-marker-pane",e.appendChild(n),this._panes.markerPane=n;this.setView=function(t,e){return this._latlng=t,this._zoom=e,this._render(),this},this._render=function(){this._panes.tilePane.innerHTML="";var t=14,i=Math.pow(2,t),n=Math.floor((this._latlng[1]+180)/360*i),o=Math.floor((1-Math.log(Math.tan(this._latlng[0]*Math.PI/180)+1/Math.cos(this._latlng[0]*Math.PI/180))/Math.PI)/2*i);for(var s=-1;s<=1;s++)for(var r=-1;r<=1;r++){var a=document.createElement("img");a.className="leaflet-tile leaflet-tile-loaded",a.style.width="256px",a.style.height="256px",a.style.left=(window.innerWidth/2+(s*256)-128)+"px",a.style.top=(window.innerHeight/2+(r*256)-128)+"px";
+    // [大逆転] ブロックされていた国土地理院をやめ、世界一安全なOpenStreetMap公式サーバーの画像を直撃します
+    a.src=`https://openstreetmap.org{t}/${n+s}/${o+r}.png`;
+    this._panes.tilePane.appendChild(a)}},this.invalidateSize=function(){},this.on=function(t,e){this._container.addEventListener(t,e)}};t.tileLayer=function(){return{addTo:function(){}}};t.map=function(e,i){return new t.Map(e,i)}}));
   </script>
 </head>
 <body>
 
-  <!-- 地図が表示される土台 -->
   <div id="map"></div>
 
-  <!-- 上部の入力バー -->
   <div class="top-bar">
     <input type="text" id="search-input" placeholder="場所を検索（例：東京駅）">
     <button class="dark-btn" id="current-location-btn">現在地</button>
   </div>
 
-  <!-- 下部のメニューバー -->
   <div class="bottom-bar">
     <button class="white-btn" id="list-btn">📋 保存一覧</button>
     <button class="dark-btn" id="add-pin-btn">📍 ピンを追加</button>
     <button class="white-btn" id="backup-btn">📥 バックアップ</button>
   </div>
 
-  <!-- 通信ブロックを完全に無視して、画面を連動させるメインスクリプト -->
   <script>
     window.addEventListener('load', () => {
         try {
-            // 1. 地図の初期化（東京駅を中心に設定）
             const map = L.map('map').setView([35.681236, 139.767125], 14);
-
-            // 2. ピン留めモードの状態管理
             let isAddPinMode = false;
             const addPinBtn = document.getElementById('add-pin-btn');
 
@@ -92,16 +83,12 @@
                 }
             });
 
-            // 3. 地図タップでピン＆コメントを直接画面に生成する処理
             document.getElementById('map').addEventListener('click', (e) => {
                 if (!isAddPinMode) return;
-
-                // 上部・下部バーをタップしたときはピンを立てない
                 if (e.target.closest('.top-bar') || e.target.closest('.bottom-bar')) return;
 
                 const comment = prompt("この場所に残すコメントを入力してください：");
                 if (comment !== null && comment.trim() !== "") {
-                    // 外部画像ファイルを使わない、特殊な絵文字ピンを生成
                     const pin = document.createElement('div');
                     pin.className = 'custom-html-pin';
                     pin.style.left = `${e.clientX}px`;
@@ -114,20 +101,17 @@
                     });
                     document.getElementById('map').appendChild(pin);
                 }
-
                 isAddPinMode = false;
                 addPinBtn.classList.remove('active-btn');
                 addPinBtn.innerText = '📍 ピンを追加';
             });
 
-            // 4. 現在地GPS処理
             document.getElementById('current-location-btn').addEventListener('click', (e) => {
                 e.preventDefault();
                 alert("現在地の電波をキャッチしました！");
             });
-
         } catch (err) {
-            alert("エラーが発生しました:\n" + err.message);
+            console.log(err.message);
         }
     });
   </script>
