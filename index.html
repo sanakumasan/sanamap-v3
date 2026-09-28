@@ -19,7 +19,6 @@
       font-family: -apple-system, sans-serif;
     }
 
-    /* 地図を表示するエリア */
     #map {
       position: absolute;
       top: 0;
@@ -86,31 +85,49 @@
       color: white;
     }
 
-    /* ピン追加モード時のカーソル変更 */
     .pin-mode-active {
       cursor: crosshair !important;
+    }
+
+    .popup-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
+    }
+
+    .popup-actions button {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 6px;
+      box-shadow: none;
+    }
+
+    .edit-btn {
+      background-color: #2563eb;
+      color: white;
+    }
+
+    .delete-btn {
+      background-color: #dc2626;
+      color: white;
     }
   </style>
 </head>
 <body>
 
-  <!-- 本物の地図を表示するコンテナ -->
   <div id="map"></div>
 
-  <!-- 上部検索バー -->
   <div class="top-bar">
     <input type="text" id="search-input" placeholder="場所を検索（例：東京駅）">
     <button class="dark-btn" id="current-location-btn">現在地</button>
   </div>
 
-  <!-- 下部操作ボタン -->
   <div class="bottom-bar">
     <button class="white-btn" id="list-btn">📋 保存一覧</button>
     <button class="dark-btn" id="add-pin-btn">📍 ピンを追加</button>
     <button class="white-btn" id="backup-btn">📥 バックアップ</button>
   </div>
 
-  <!-- LeafletのJavaScript読み込み -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
@@ -119,15 +136,85 @@
       const addPinBtn = document.getElementById('add-pin-btn');
       const mapContainer = document.getElementById('map');
 
-      // 1. 無料マップ（OpenStreetMap）の初期化 (東京中心)
+      // データのローカルストレージ管理用配列
+      let savedPins = JSON.parse(localStorage.getItem('sanamap_pins')) || [];
+
+      // マップ初期化
       const map = L.map('map').setView([35.6812, 139.7671], 13);
 
-      // 地図タイルの読み込み
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
 
-      // 2. ピン追加モード切り替えボタン
+      // ストレージ保存処理
+      function saveToStorage() {
+        localStorage.setItem('sanamap_pins', JSON.stringify(savedPins));
+      }
+
+      // ポップアップHTML作成
+      function createPopupContent(comment) {
+        const container = document.createElement('div');
+        container.innerHTML = `
+          <b>📌 記録されたコメント:</b><br>
+          <span class="comment-text">${comment}</span>
+          <div class="popup-actions">
+            <button class="edit-btn">✏️ 編集</button>
+            <button class="delete-btn">🗑️ 削除</button>
+          </div>
+        `;
+        return container;
+      }
+
+      // ピン生成処理（データ連動）
+      function addInteractiveMarker(pinData) {
+        const marker = L.marker([pinData.lat, pinData.lng], { draggable: true }).addTo(map);
+        
+        const popupContent = createPopupContent(pinData.comment);
+        marker.bindPopup(popupContent);
+
+        // ドラッグ移動した時に位置情報を更新して保存
+        marker.on('dragend', (e) => {
+          const newLatLng = e.target.getLatLng();
+          pinData.lat = newLatLng.lat;
+          pinData.lng = newLatLng.lng;
+          saveToStorage();
+        });
+
+        // ポップアップの編集・削除処理
+        marker.on('popupopen', () => {
+          const popupElement = marker.getPopup().getElement();
+          
+          // 編集
+          const editBtn = popupElement.querySelector('.edit-btn');
+          editBtn.onclick = () => {
+            const newComment = prompt("コメントを編集してください：", pinData.comment);
+            if (newComment !== null && newComment.trim() !== "") {
+              pinData.comment = newComment.trim();
+              popupElement.querySelector('.comment-text').textContent = pinData.comment;
+              saveToStorage();
+            }
+          };
+
+          // 削除
+          const deleteBtn = popupElement.querySelector('.delete-btn');
+          deleteBtn.onclick = () => {
+            if (confirm("このピンを削除してもよろしいですか？")) {
+              map.removeLayer(marker);
+              savedPins = savedPins.filter(p => p.id !== pinData.id);
+              saveToStorage();
+            }
+          };
+        });
+
+        return marker;
+      }
+
+      // 1. 初回読み込み時に過去のピンを復元
+      savedPins.forEach(pinData => {
+        addInteractiveMarker(pinData);
+      });
+
+      // 2. ピン追加モード切り替え
       addPinBtn.addEventListener('click', (e) => {
         e.preventDefault();
         isAddPinMode = !isAddPinMode;
@@ -143,7 +230,7 @@
         }
       });
 
-      // 3. 地図上のタップ・クリックでピンを追加する処理
+      // 3. 地図タップでピンを追加・保存
       map.on('click', (e) => {
         if (!isAddPinMode) return;
 
@@ -151,20 +238,26 @@
         const comment = prompt("この場所に残すコメントを入力してください：");
 
         if (comment !== null && comment.trim() !== "") {
-          // 地図上の正確な緯度経度にピンを配置
-          L.marker([lat, lng]).addTo(map)
-            .bindPopup(`<b>📌 記録されたコメント:</b><br>${comment}`)
-            .openPopup();
+          const newPin = {
+            id: Date.now(),
+            lat: lat,
+            lng: lng,
+            comment: comment.trim()
+          };
+
+          savedPins.push(newPin);
+          saveToStorage();
+          const marker = addInteractiveMarker(newPin);
+          marker.openPopup();
         }
 
-        // モード解除
         isAddPinMode = false;
         addPinBtn.classList.remove('active-btn');
         addPinBtn.innerText = '📍 ピンを追加';
         mapContainer.classList.remove('pin-mode-active');
       });
 
-      // 4. 現在地ボタン（ブラウザのGPS機能を利用）
+      // 4. 現在地ボタン
       document.getElementById('current-location-btn').addEventListener('click', (e) => {
         e.preventDefault();
         if ("geolocation" in navigator) {
@@ -172,7 +265,6 @@
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             map.setView([lat, lng], 15);
-            L.marker([lat, lng]).addTo(map).bindPopup("📍 現在地").openPopup();
           }, () => {
             alert("現在地の取得に失敗しました。位置情報の許可を確認してください。");
           });
@@ -181,13 +273,20 @@
         }
       });
 
-      // 5. その他デモボタンの処理
+      // 5. 保存一覧ボタン（保存された件数を表示）
       document.getElementById('list-btn').addEventListener('click', () => {
-        alert("保存一覧を表示します（デモ用）");
+        alert(`現在 ${savedPins.length} 件のピンが保存されています。`);
       });
 
+      // 6. バックアップボタン（JSON形式でデータを保存）
       document.getElementById('backup-btn').addEventListener('click', () => {
-        alert("データをバックアップしました！");
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedPins, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `sanamap_backup_${Date.now()}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
       });
     });
   </script>
