@@ -265,7 +265,7 @@
   <div id="map"></div>
 
   <div class="top-bar">
-    <input type="text" id="search-input" placeholder="場所を入力してEnter（例：東京駅）">
+    <input type="text" id="search-input" placeholder="場所・住所を入力してEnter">
     <button class="dark-btn" id="current-location-btn">現在地</button>
   </div>
 
@@ -308,9 +308,9 @@
       // 1. マップ初期化
       const map = L.map('map').setView([35.6812, 139.7671], 13);
 
-      // 2. スマホ拡大対応の地図タイル設定
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      // 2. 地図タイルを「国土地理院（淡色地図）」に変更
+      L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>',
         maxZoom: 21,
         maxNativeZoom: 18
       }).addTo(map);
@@ -330,145 +330,158 @@
       }
 
       function createPopupContent(comment, lat, lng) {
-  const container = document.createElement('div');
-  
-  // GoogleマップのナビURL（現在地から目的地までのルートを開く）
-  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+        const container = document.createElement('div');
+        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
 
-  container.innerHTML = `
-    <b>📌 記録されたコメント:</b><br>
-    <span class="comment-text">${comment}</span>
-    <div class="popup-actions" style="margin-top: 8px; display: flex; flex-direction: column; gap: 4px;">
-      <a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
-        <button style="width: 100%; background-color: #4285F4; color: white; padding: 6px; border-radius: 6px; font-weight: bold;">
-          🧭 Googleマップでナビ開始
-        </button>
-      </a>
-      <div style="display: flex; gap: 4px;">
-        <button class="edit-btn" style="flex: 1;">✏️ 編集</button>
-        <button class="delete-btn" style="flex: 1;">🗑️ 削除</button>
-      </div>
-    </div>
-  `;
-  return container;
-}
+        container.innerHTML = `
+          <b>📌 記録されたコメント:</b><br>
+          <span class="comment-text">${comment}</span>
+          <div class="popup-actions" style="margin-top: 8px; display: flex; flex-direction: column; gap: 4px;">
+            <a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+              <button style="width: 100%; background-color: #4285F4; color: white; padding: 6px; border-radius: 6px; font-weight: bold;">
+                🧭 Googleマップでナビ開始
+              </button>
+            </a>
+            <div style="display: flex; gap: 4px;">
+              <button class="edit-btn" style="flex: 1;">✏️ 編集</button>
+              <button class="delete-btn" style="flex: 1;">🗑️ 削除</button>
+            </div>
+          </div>
+        `;
+        return container;
+      }
 
-      // ピン追加用の関数（アプリ内ガイド線＋Googleマップ連携に対応）
-function addInteractiveMarker(pinData) {
-  const marker = L.marker([pinData.lat, pinData.lng], { icon: highlightIcon, draggable: true }).addTo(map);
-  markerMap.set(pinData.id, marker);
+      // ピン追加用の関数
+      function addInteractiveMarker(pinData) {
+        const marker = L.marker([pinData.lat, pinData.lng], { icon: highlightIcon, draggable: true }).addTo(map);
+        markerMap.set(pinData.id, marker);
 
-  // 1. createPopupContent に pinData.lat と pinData.lng を追加して渡す
-  const popupContent = createPopupContent(pinData.comment, pinData.lat, pinData.lng);
-  marker.bindPopup(popupContent);
+        const popupContent = createPopupContent(pinData.comment, pinData.lat, pinData.lng);
+        marker.bindPopup(popupContent);
 
-  // 2. ピンをクリックした時にアプリ内でガイド線を引く処理を追加
-  marker.on('click', () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const currentLat = position.coords.latitude;
-        const currentLng = position.coords.longitude;
+        // ピンをタップした際にアプリ内でガイド線を表示
+        marker.on('click', () => {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+              const currentLat = position.coords.latitude;
+              const currentLng = position.coords.longitude;
 
-        if (routeLine) {
-          map.removeLayer(routeLine);
-        }
+              if (routeLine) {
+                map.removeLayer(routeLine);
+              }
 
-        routeLine = L.polyline([
-          [currentLat, currentLng],
-          [pinData.lat, pinData.lng]
-        ], {
-          color: '#2563eb',
-          weight: 4,
-          opacity: 0.8,
-          dashArray: '8, 8'
-        }).addTo(map);
-      });
-    }
-  });
+              routeLine = L.polyline([
+                [currentLat, currentLng],
+                [pinData.lat, pinData.lng]
+              ], {
+                color: '#2563eb',
+                weight: 4,
+                opacity: 0.8,
+                dashArray: '8, 8'
+              }).addTo(map);
+            });
+          }
+        });
 
-  marker.on('dragend', (e) => {
-    const newLatLng = e.target.getLatLng();
-    pinData.lat = newLatLng.lat;
-    pinData.lng = newLatLng.lng;
-    saveToStorage();
-  });
-
-  marker.on('popupopen', () => {
-    const popupElement = marker.getPopup().getElement();
-    
-    const editBtn = popupElement.querySelector('.edit-btn');
-    if (editBtn) {
-      editBtn.onclick = () => {
-        const newComment = prompt("コメントを編集してください：", pinData.comment);
-        if (newComment !== null && newComment.trim() !== "") {
-          pinData.comment = newComment.trim();
-          popupElement.querySelector('.comment-text').textContent = pinData.comment;
+        marker.on('dragend', (e) => {
+          const newLatLng = e.target.getLatLng();
+          pinData.lat = newLatLng.lat;
+          pinData.lng = newLatLng.lng;
           saveToStorage();
-        }
-      };
-    }
+        });
 
-    const deleteBtn = popupElement.querySelector('.delete-btn');
-    if (deleteBtn) {
-      deleteBtn.onclick = () => {
-        if (confirm("このピンを削除してもよろしいですか？")) {
-          map.removeLayer(marker);
-          markerMap.delete(pinData.id);
-          savedPins = savedPins.filter(p => p.id !== pinData.id);
-          saveToStorage();
-          if (routeLine) map.removeLayer(routeLine);
-        }
-      };
-    }
-  });
+        marker.on('popupopen', () => {
+          const popupElement = marker.getPopup().getElement();
+          
+          const editBtn = popupElement.querySelector('.edit-btn');
+          if (editBtn) {
+            editBtn.onclick = () => {
+              const newComment = prompt("コメントを編集してください：", pinData.comment);
+              if (newComment !== null && newComment.trim() !== "") {
+                pinData.comment = newComment.trim();
+                popupElement.querySelector('.comment-text').textContent = pinData.comment;
+                saveToStorage();
+              }
+            };
+          }
 
-  return marker;
-}
+          const deleteBtn = popupElement.querySelector('.delete-btn');
+          if (deleteBtn) {
+            deleteBtn.onclick = () => {
+              if (confirm("このピンを削除してもよろしいですか？")) {
+                map.removeLayer(marker);
+                markerMap.delete(pinData.id);
+                savedPins = savedPins.filter(p => p.id !== pinData.id);
+                saveToStorage();
+                if (routeLine) map.removeLayer(routeLine);
+              }
+            };
+          }
+        });
+
+        return marker;
+      }
 
       savedPins.forEach(pinData => {
         addInteractiveMarker(pinData);
       });
 
-    // 検索機能（Nominatim API を使用・日本語検索とkeydownに対応）
-async function searchLocation(query) {
-  if (!query || !query.trim()) return;
+      // 検索機能（OpenStreetMap + 国土地理院 API 併用）
+      async function searchLocation(query) {
+        if (!query || !query.trim()) return;
 
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&accept-language=ja&q=${encodeURIComponent(query)}`;
-    const response = await fetch(url);
-    const data = await response.json();
+        const keyword = query.trim();
 
-    if (data && data.length > 0) {
-      const lat = parseFloat(data[0].lat);
-      const lon = parseFloat(data[0].lon);
-      const displayName = data[0].display_name.split(',')[0];
+        try {
+          let url = `https://nominatim.openstreetmap.org/search?format=json&accept-language=ja&q=${encodeURIComponent(keyword)}`;
+          let response = await fetch(url);
+          let data = await response.json();
 
-      if (searchResultMarker) {
-        map.removeLayer(searchResultMarker);
+          let lat, lon, displayName;
+
+          if (data && data.length > 0) {
+            lat = parseFloat(data[0].lat);
+            lon = parseFloat(data[0].lon);
+            displayName = data[0].display_name.split(',')[0];
+          } else {
+            // 国土地理院 Address API で再検索
+            const gsiUrl = `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(keyword)}`;
+            const gsiResponse = await fetch(gsiUrl);
+            const gsiData = await gsiResponse.json();
+
+            if (gsiData && gsiData.length > 0) {
+              lon = gsiData[0].geometry.coordinates[0];
+              lat = gsiData[0].geometry.coordinates[1];
+              displayName = gsiData[0].properties.title;
+            }
+          }
+
+          if (lat && lon) {
+            if (searchResultMarker) {
+              map.removeLayer(searchResultMarker);
+            }
+
+            searchResultMarker = L.marker([lat, lon], { icon: highlightIcon })
+              .addTo(map)
+              .bindPopup(`<b>🔍 検索結果:</b><br>${displayName}`)
+              .openPopup();
+
+            map.flyTo([lat, lon], 17, { duration: 1.5 });
+          } else {
+            alert("該当する住所・場所が見つかりませんでした。別のキーワードでお試しください。");
+          }
+        } catch (error) {
+          console.error("検索エラー:", error);
+          alert("検索中にエラーが発生しました。");
+        }
       }
 
-      searchResultMarker = L.marker([lat, lon], { icon: highlightIcon })
-        .addTo(map)
-        .bindPopup(`<b>🔍 検索結果:</b><br>${displayName}`)
-        .openPopup();
-
-      map.flyTo([lat, lon], 16, { duration: 1.5 });
-    } else {
-      alert("該当する場所が見つかりませんでした。別のキーワード（例: 東京駅、渋谷区役所）で試してください。");
-    }
-  } catch (error) {
-    console.error("検索エラー:", error);
-    alert("検索中にエラーが発生しました。");
-  }
-}
-
-// keypress を keydown に変更
-searchInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    searchLocation(searchInput.value);
-  }
-});
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          searchLocation(searchInput.value);
+        }
+      });
 
       addPinBtn.addEventListener('click', (e) => {
         e.preventDefault();
