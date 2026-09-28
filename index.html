@@ -292,6 +292,7 @@
     window.addEventListener('load', () => {
       let isAddPinMode = false;
       let currentLocationMarker = null;
+      let searchResultMarker = null;
       const markerMap = new Map();
 
       const addPinBtn = document.getElementById('add-pin-btn');
@@ -303,23 +304,25 @@
 
       let savedPins = JSON.parse(localStorage.getItem('sanamap_pins')) || [];
 
+      // 1. マップ初期化
       const map = L.map('map').setView([35.6812, 139.7671], 13);
 
+      // 2. スマホ拡大対応の地図タイル設定
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  maxZoom: 21,          // 画面上で拡大を許可するレベル（数値が大きいほど拡大できる）
-  maxNativeZoom: 18     // 地図画像の元データの最大レベル（これを超えると画像を伸ばして拡大表示する）
-}).addTo(map);
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 21,
+        maxNativeZoom: 18
+      }).addTo(map);
 
-      // 目立つカスタムピン（赤色）を作成
-const highlightIcon = L.icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [35, 57],      // アイコンのサイズ（通常より大きめ）
-  iconAnchor: [17, 57],    // ピンの先端の位置
-  popupAnchor: [1, -46],   // 吹き出しの位置
-  shadowSize: [50, 50]
-});
+      // 3. 赤色の目立つカスタムピン設定
+      const highlightIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [35, 57],
+        iconAnchor: [17, 57],
+        popupAnchor: [1, -46],
+        shadowSize: [50, 50]
+      });
 
       function saveToStorage() {
         localStorage.setItem('sanamap_pins', JSON.stringify(savedPins));
@@ -338,22 +341,20 @@ const highlightIcon = L.icon({
         return container;
       }
 
-     function addInteractiveMarker(pinData) {
-  // 1. アイコンに highlightIcon を指定し、pinData.lat と pinData.lng を使う
-  const marker = L.marker([pinData.lat, pinData.lng], { icon: highlightIcon, draggable: true }).addTo(map);
-  markerMap.set(pinData.id, marker);
+      // ピン追加用の関数
+      function addInteractiveMarker(pinData) {
+        const marker = L.marker([pinData.lat, pinData.lng], { icon: highlightIcon, draggable: true }).addTo(map);
+        markerMap.set(pinData.id, marker);
 
-  // 2. 吹き出しにコメント（またはタイトル）を表示して自動で開く
-  const popupContent = createPopupContent(pinData.comment);
-  marker.bindPopup(popupContent).openPopup();
+        const popupContent = createPopupContent(pinData.comment);
+        marker.bindPopup(popupContent);
 
-  marker.on('dragend', (e) => {
-    const newLatLng = e.target.getLatLng();
-    pinData.lat = newLatLng.lat;
-    pinData.lng = newLatLng.lng;
-    saveToStorage();
-  });
-}
+        marker.on('dragend', (e) => {
+          const newLatLng = e.target.getLatLng();
+          pinData.lat = newLatLng.lat;
+          pinData.lng = newLatLng.lng;
+          saveToStorage();
+        });
 
         marker.on('popupopen', () => {
           const popupElement = marker.getPopup().getElement();
@@ -386,6 +387,7 @@ const highlightIcon = L.icon({
         addInteractiveMarker(pinData);
       });
 
+      // 検索機能（検索場所に赤ピンと吹き出しを表示）
       async function searchLocation(query) {
         if (!query.trim()) return;
 
@@ -396,8 +398,18 @@ const highlightIcon = L.icon({
           if (data && data.length > 0) {
             const lat = parseFloat(data[0].lat);
             const lon = parseFloat(data[0].lon);
+            const displayName = data[0].display_name.split(',')[0];
 
-            map.flyTo([lat, lon], 15, { duration: 1.5 });
+            if (searchResultMarker) {
+              map.removeLayer(searchResultMarker);
+            }
+
+            searchResultMarker = L.marker([lat, lon], { icon: highlightIcon })
+              .addTo(map)
+              .bindPopup(`<b>🔍 検索場所:</b><br>${displayName}`)
+              .openPopup();
+
+            map.flyTo([lat, lon], 16, { duration: 1.5 });
           } else {
             alert("該当する場所が見つかりませんでした。別の言葉で検索してください。");
           }
