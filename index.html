@@ -3,23 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>SANA MAP V3 - CANVAS EDITION</title>
+  <title>SANA MAP V3 - STANDARD</title>
+
+  <!-- 世界中で最も実績のある、絶対にバグらない地図のスタイルシート -->
+  <link rel="stylesheet" href="https://unpkg.com" />
 
   <style>
     html, body {
       margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
-      background-color: #f4f3f0; font-family: -apple-system, sans-serif;
+      background-color: #f8fafc; font-family: -apple-system, sans-serif;
     }
-    
-    /* [最強の対策] 画像タグや背景CSSを使わず、プログラムがお絵描きをするキャンバスエリアを画面いっぱいに固定 */
-    #map-canvas {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
+    /* 地図を表示するメインエリア（はみ出しやズレを完全に防ぎます） */
+    #map {
+      position: absolute; top: 0; left: 0;
+      width: 100vw; height: 100vh;
       z-index: 1;
     }
-    
     .top-bar {
       position: absolute; top: 40px; left: 5%; width: 90%; z-index: 1000; display: flex; gap: 10px;
     }
@@ -36,114 +35,99 @@
     .dark-btn { background-color: #111827; color: #ffffff; }
     .white-btn { background-color: #ffffff; color: #1f2937; border: 1px solid #e5e7eb; }
     .active-btn { background-color: #ef4444 !important; color: white; }
-    
-    /* 立てたピンのデザイン（キャンバスマップ上に直接重なります） */
-    .custom-pin {
-      position: absolute;
-      width: 32px;
-      height: 32px;
-      font-size: 24px;
-      transform: translate(-50%, -100%);
-      z-index: 500;
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
 
-  <!-- スマホの画像ブロックを完全に無効化する、自己お絵描きキャンバス -->
-  <canvas id="map-canvas"></canvas>
+  <!-- 本物の地図が敷き詰められる土台 -->
+  <div id="map"></div>
 
-  <!-- あなたの作った美しいUIバー（完全復元） -->
+  <!-- 上部の入力バー -->
   <div class="top-bar">
     <input type="text" id="search-input" placeholder="場所を検索（例：東京駅）">
     <button class="dark-btn" id="current-location-btn">現在地</button>
   </div>
 
+  <!-- 下部のメニューバー -->
   <div class="bottom-bar">
     <button class="white-btn" id="list-btn">📋 保存一覧</button>
     <button class="dark-btn" id="add-pin-btn">📍 ピンを追加</button>
     <button class="white-btn" id="backup-btn">📥 バックアップ</button>
   </div>
 
+  <!-- 地図を組み立てる世界の公式システム（Leaflet） -->
+  <script src="https://unpkg.com"></script>
+  
   <script>
     window.addEventListener('load', () => {
-        const canvas = document.getElementById('map-canvas');
-        const ctx = canvas.getContext('2d');
-        
-        // スマホの正確な画面サイズをキャンバスに適用
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        // [超強固な処理] 地図の画像データを通信ではなく、プログラムの「お絵描き命令」としてキャンバスに強制転写します
-        const mapImg = new Image();
-        mapImg.crossOrigin = "anonymous";
-        // 日本国内の最も安全な暗号化サーバー（OSM日本ミラー）の東京駅周辺のリアル地図画像を直接指定
-        mapImg.src = "https://openstreetmap.jp";
-        
-        mapImg.onload = () => {
-            // キャンバスの中心に、スマホの画面サイズいっぱいに地図を描画（これでグレーのシートを完全に破壊します）
-            ctx.drawImage(mapImg, 0, 0, canvas.width, canvas.height);
-            
-            // 地図の上に、プログラムで直接「東京駅」の文字と目印を焼き付けます
-            ctx.fillStyle = "#2c3e50";
-            ctx.font = "bold 18px sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("東京駅（周辺マップ）", canvas.width / 2, canvas.height / 2 - 20);
-        };
-
-        // ピン留めモードの状態管理
-        let isAddPinMode = false;
-        const addPinBtn = document.getElementById('add-pin-btn');
-
-        // 「📍 ピンを追加」ボタン
-        addPinBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            isAddPinMode = !isAddPinMode;
-            if (isAddPinMode) {
-                addPinBtn.classList.add('active-btn');
-                addPinBtn.innerText = '🗺️ 地図をタップ';
-            } else {
-                addPinBtn.classList.remove('active-btn');
-                addPinBtn.innerText = '📍 ピンを追加';
+        try {
+            if (typeof L === 'undefined') {
+                alert("地図システムの読み込みに失敗しました。ネット環境を確認してください。");
+                return;
             }
-        });
 
-        // 2. 地図をタップして本物のピンを立てる処理（連動も完全復活！）
-        canvas.addEventListener('click', (e) => {
-            if (!isAddPinMode) return;
+            // 1. 地図の初期化（東京駅を中心に設定）
+            const map = L.map('map', {
+                zoomControl: false,
+                fadeAnimation: false
+            }).setView([35.681236, 139.767125], 14);
 
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            // 2. 世界一安定しているOpenStreetMap標準タイルをロード（HTTPS安全通信版）
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
 
-            const comment = prompt("この場所に残すコメントを入力してください：");
-            
-            if (comment !== null && comment.trim() !== "") {
-                const pin = document.createElement('div');
-                pin.className = 'custom-pin';
-                pin.style.left = `${x}px`;
-                pin.style.top = `${y}px`;
-                pin.innerHTML = '📍';
-                
-                pin.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    alert(`📌 記録されたコメント:\n${comment}`);
+            // 表示のズレを強制修正
+            setTimeout(() => { map.invalidateSize(true); }, 300);
+
+            // 3. ピン留めモードの状態管理
+            let isAddPinMode = false;
+            const addPinBtn = document.getElementById('add-pin-btn');
+
+            addPinBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                isAddPinMode = !isAddPinMode;
+                if (isAddPinMode) {
+                    addPinBtn.classList.add('active-btn');
+                    addPinBtn.innerText = '🗺️ 地図をタップ';
+                } else {
+                    addPinBtn.classList.remove('active-btn');
+                    addPinBtn.innerText = '📍 ピンを追加';
+                }
+            });
+
+            // 4. 地図タップでピン＆コメント（本物の緯度経度と完全連動！）
+            map.on('click', (e) => {
+                if (!isAddPinMode) return;
+
+                setTimeout(() => {
+                    const comment = prompt("この場所に残すコメントを入力してください：");
+                    if (comment !== null && comment.trim() !== "") {
+                        const marker = L.marker(e.latlng).addTo(map);
+                        marker.bindPopup(`<b>コメント:</b><br>${comment}`).openPopup();
+                    }
+                    isAddPinMode = false;
+                    addPinBtn.classList.remove('active-btn');
+                    addPinBtn.innerText = '📍 ピンを追加';
+                }, 50);
+            });
+
+            // 5. 現在地GPS処理
+            document.getElementById('current-location-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    map.setView([lat, lng], 16);
+                }, (error) => {
+                    alert("位置情報の取得に失敗しました。スマホの設定を確認してください。");
                 });
+            });
 
-                document.body.appendChild(pin);
-            }
-
-            isAddPinMode = false;
-            addPinBtn.classList.remove('active-btn');
-            addPinBtn.innerText = '📍 ピンを追加';
-        });
-
-        // 現在地ボタンを押したときの動き
-        document.getElementById('current-location-btn').addEventListener('click', (e) => {
-            e.preventDefault();
-            alert("現在地のGPS電波をキャンバスに接続しました！");
-        });
+        } catch (err) {
+            console.log(err.message);
+        }
     });
   </script>
 </body>
