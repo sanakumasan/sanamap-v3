@@ -45,6 +45,7 @@
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       font-size: 16px;
+      outline: none;
     }
 
     .bottom-bar {
@@ -118,7 +119,7 @@
   <div id="map"></div>
 
   <div class="top-bar">
-    <input type="text" id="search-input" placeholder="場所を検索（例：東京駅）">
+    <input type="text" id="search-input" placeholder="場所を入力してEnter（例：東京駅）">
     <button class="dark-btn" id="current-location-btn">現在地</button>
   </div>
 
@@ -134,6 +135,7 @@
     window.addEventListener('load', () => {
       let isAddPinMode = false;
       const addPinBtn = document.getElementById('add-pin-btn');
+      const searchInput = document.getElementById('search-input');
       const mapContainer = document.getElementById('map');
 
       // データのローカルストレージ管理用配列
@@ -209,12 +211,43 @@
         return marker;
       }
 
-      // 1. 初回読み込み時に過去のピンを復元
+      // 初回読み込み時に過去のピンを復元
       savedPins.forEach(pinData => {
         addInteractiveMarker(pinData);
       });
 
-      // 2. ピン追加モード切り替え
+      // 🔍 場所検索・ジャンプ機能 (Nominatim APIを利用)
+      async function searchLocation(query) {
+        if (!query.trim()) return;
+
+        try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+          const data = await response.json();
+
+          if (data && data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lon = parseFloat(data[0].lon);
+
+            // 検索した場所にスムーズに移動
+            map.flyTo([lat, lon], 15, { duration: 1.5 });
+          } else {
+            alert("該当する場所が見つかりませんでした。別の言葉で検索してください。");
+          }
+        } catch (error) {
+          console.error("検索エラー:", error);
+          alert("検索中にエラーが発生しました。");
+        }
+      }
+
+      // 検索バーでEnterキーを押した時に検索を実行
+      searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          searchLocation(searchInput.value);
+        }
+      });
+
+      // ピン追加モード切り替え
       addPinBtn.addEventListener('click', (e) => {
         e.preventDefault();
         isAddPinMode = !isAddPinMode;
@@ -230,7 +263,7 @@
         }
       });
 
-      // 3. 地図タップでピンを追加・保存
+      // 地図タップでピンを追加・保存
       map.on('click', (e) => {
         if (!isAddPinMode) return;
 
@@ -257,14 +290,14 @@
         mapContainer.classList.remove('pin-mode-active');
       });
 
-      // 4. 現在地ボタン
+      // 現在地ボタン
       document.getElementById('current-location-btn').addEventListener('click', (e) => {
         e.preventDefault();
         if ("geolocation" in navigator) {
           navigator.geolocation.getCurrentPosition((position) => {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
-            map.setView([lat, lng], 15);
+            map.flyTo([lat, lng], 15, { duration: 1.5 });
           }, () => {
             alert("現在地の取得に失敗しました。位置情報の許可を確認してください。");
           });
@@ -273,12 +306,12 @@
         }
       });
 
-      // 5. 保存一覧ボタン（保存された件数を表示）
+      // 保存一覧ボタン
       document.getElementById('list-btn').addEventListener('click', () => {
         alert(`現在 ${savedPins.length} 件のピンが保存されています。`);
       });
 
-      // 6. バックアップボタン（JSON形式でデータを保存）
+      // バックアップボタン
       document.getElementById('backup-btn').addEventListener('click', () => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedPins, null, 2));
         const downloadAnchor = document.createElement('a');
