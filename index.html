@@ -4,75 +4,191 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>SANA MAP V3</title>
+  
+  <!-- Leaflet（無料マップライブラリ）のスタイルシート -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #f4f3f0; font-family: -apple-system, sans-serif; }
-    #map-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
-    .real-map-image { width: 100vw; height: 100vh; object-fit: cover; pointer-events: none; }
-    .top-bar { position: absolute; top: 40px; left: 5%; width: 90%; z-index: 1000; display: flex; gap: 10px; }
-    .top-bar input { flex: 1; padding: 12px; border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); font-size: 16px; }
-    .bottom-bar { position: absolute; bottom: 40px; left: 5%; width: 90%; z-index: 1000; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    button { padding: 12px 4px; border: none; border-radius: 12px; font-size: 13px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; cursor: pointer; }
-    .dark-btn { background-color: #111827; color: #ffffff; }
-    .white-btn { background-color: #ffffff; color: #1f2937; border: 1px solid #e5e7eb; }
-    .active-btn { background-color: #ef4444 !important; color: white; }
-    .custom-pin { position: absolute; width: 32px; height: 32px; font-size: 24px; transform: translate(-50%, -100%); z-index: 500; cursor: pointer; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #f4f3f0;
+      font-family: -apple-system, sans-serif;
+    }
+
+    /* 地図を表示するエリア */
+    #map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+    }
+
+    .top-bar {
+      position: absolute;
+      top: 40px;
+      left: 5%;
+      width: 90%;
+      z-index: 1000;
+      display: flex;
+      gap: 10px;
+    }
+
+    .top-bar input {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      font-size: 16px;
+    }
+
+    .bottom-bar {
+      position: absolute;
+      bottom: 40px;
+      left: 5%;
+      width: 90%;
+      z-index: 1000;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    button {
+      padding: 12px 4px;
+      border: none;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: bold;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .dark-btn {
+      background-color: #111827;
+      color: #ffffff;
+    }
+
+    .white-btn {
+      background-color: #ffffff;
+      color: #1f2937;
+      border: 1px solid #e5e7eb;
+    }
+
+    .active-btn {
+      background-color: #ef4444 !important;
+      color: white;
+    }
+
+    /* ピン追加モード時のカーソル変更 */
+    .pin-mode-active {
+      cursor: crosshair !important;
+    }
   </style>
 </head>
 <body>
-  <div id="map-container">
-    <!-- あなたのリポジトリにあるmap.svgファイルを直接1枚の写真として画面に表示させます -->
-    <img class="real-map-image" src="map.svg" alt="MAP">
-  </div>
+
+  <!-- 本物の地図を表示するコンテナ -->
+  <div id="map"></div>
+
+  <!-- 上部検索バー -->
   <div class="top-bar">
     <input type="text" id="search-input" placeholder="場所を検索（例：東京駅）">
     <button class="dark-btn" id="current-location-btn">現在地</button>
   </div>
+
+  <!-- 下部操作ボタン -->
   <div class="bottom-bar">
     <button class="white-btn" id="list-btn">📋 保存一覧</button>
     <button class="dark-btn" id="add-pin-btn">📍 ピンを追加</button>
     <button class="white-btn" id="backup-btn">📥 バックアップ</button>
   </div>
+
+  <!-- LeafletのJavaScript読み込み -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <script>
     window.addEventListener('load', () => {
-        let isAddPinMode = false;
-        const mapContainer = document.getElementById('map-container');
-        const addPinBtn = document.getElementById('add-pin-btn');
-        addPinBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            isAddPinMode = !isAddPinMode;
-            if (isAddPinMode) {
-                addPinBtn.classList.add('active-btn');
-                addPinBtn.innerText = '🗺️ 地図をタップ';
-            } else {
-                addPinBtn.classList.remove('active-btn');
-                addPinBtn.innerText = '📍 ピンを追加';
-            }
-        });
-        mapContainer.addEventListener('click', (e) => {
-            if (!isAddPinMode) return;
-            const rect = mapContainer.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            const comment = prompt("この場所に残すコメントを入力してください：");
-            if (comment !== null && comment.trim() !== "") {
-                const pin = document.createElement('div');
-                pin.className = 'custom-pin';
-                pin.style.left = `${x}px`;
-                pin.style.top = `${y}px`;
-                pin.innerHTML = '📍';
-                pin.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    alert(`📌 記録されたコメント:\n${comment}`);
-                });
-                mapContainer.appendChild(pin);
-            }
-            isAddPinMode = false;
-            addPinBtn.classList.remove('active-btn');
-            addPinBtn.innerText = '📍 ピンを追加';
-        });
-        document.getElementById('current-location-btn').addEventListener('click', (e) => { e.preventDefault(); alert("現在地の電波をキャッチしました！"); });
-        document.getElementById('list-btn').addEventListener('click', () => { alert("保存一覧を表示します（デモ用）"); });
-        document.getElementById('backup-btn').addEventListener('click', () => { alert("データをバックアップしました！"); });
+      let isAddPinMode = false;
+      const addPinBtn = document.getElementById('add-pin-btn');
+      const mapContainer = document.getElementById('map');
+
+      // 1. 無料マップ（OpenStreetMap）の初期化 (東京中心)
+      const map = L.map('map').setView([35.6812, 139.7671], 13);
+
+      // 地図タイルの読み込み
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      // 2. ピン追加モード切り替えボタン
+      addPinBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        isAddPinMode = !isAddPinMode;
+
+        if (isAddPinMode) {
+          addPinBtn.classList.add('active-btn');
+          addPinBtn.innerText = '🗺️ 地図をタップ';
+          mapContainer.classList.add('pin-mode-active');
+        } else {
+          addPinBtn.classList.remove('active-btn');
+          addPinBtn.innerText = '📍 ピンを追加';
+          mapContainer.classList.remove('pin-mode-active');
+        }
+      });
+
+      // 3. 地図上のタップ・クリックでピンを追加する処理
+      map.on('click', (e) => {
+        if (!isAddPinMode) return;
+
+        const { lat, lng } = e.latlng;
+        const comment = prompt("この場所に残すコメントを入力してください：");
+
+        if (comment !== null && comment.trim() !== "") {
+          // 地図上の正確な緯度経度にピンを配置
+          L.marker([lat, lng]).addTo(map)
+            .bindPopup(`<b>📌 記録されたコメント:</b><br>${comment}`)
+            .openPopup();
+        }
+
+        // モード解除
+        isAddPinMode = false;
+        addPinBtn.classList.remove('active-btn');
+        addPinBtn.innerText = '📍 ピンを追加';
+        mapContainer.classList.remove('pin-mode-active');
+      });
+
+      // 4. 現在地ボタン（ブラウザのGPS機能を利用）
+      document.getElementById('current-location-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition((position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            map.setView([lat, lng], 15);
+            L.marker([lat, lng]).addTo(map).bindPopup("📍 現在地").openPopup();
+          }, () => {
+            alert("現在地の取得に失敗しました。位置情報の許可を確認してください。");
+          });
+        } else {
+          alert("お使いのブラウザは位置情報に対応していません。");
+        }
+      });
+
+      // 5. その他デモボタンの処理
+      document.getElementById('list-btn').addEventListener('click', () => {
+        alert("保存一覧を表示します（デモ用）");
+      });
+
+      document.getElementById('backup-btn').addEventListener('click', () => {
+        alert("データをバックアップしました！");
+      });
     });
   </script>
 </body>
