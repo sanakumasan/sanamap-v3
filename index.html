@@ -3,16 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>SANA MAP V3 - REAL MAP</title>
+  <title>SANA MAP V3</title>
 
-  <!-- [対策1] スマホのブロックに引っかからない日本国内の超安全なサーバーから地図システムを読み込み -->
-  <link rel="stylesheet" href="https://esm.sh" />
+  <!-- [最強の対策] 外部サーバーではなく、自分のリポジトリ内のファイルを直接読み込みます -->
+  <link rel="stylesheet" href="leaflet.css" />
+  <script src="leaflet.js"></script>
+
+  <!-- あなたの作った美しいUIデザインCSS -->
   <style>
     html, body {
       margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
       background-color: #f8fafc; font-family: -apple-system, sans-serif;
     }
-    /* 地図の表示エリア（グレーの方眼紙ではなく本物の地図に切り替わります） */
     #map {
       position: absolute; top: 0; left: 0;
       width: 100vw; height: 100vh;
@@ -38,7 +40,7 @@
 </head>
 <body>
 
-  <!-- 本物の地図が敷き詰められるエリア -->
+  <!-- 地図が表示される土台 -->
   <div id="map"></div>
 
   <!-- 上部の入力バー -->
@@ -54,82 +56,74 @@
     <button class="white-btn" id="backup-btn">📥 バックアップ</button>
   </div>
 
-  <!-- 日本国内の高速配信ルート（esm.sh）から地図の脳みそをロード -->
-  <script src="https://esm.sh"></script>
   <script>
-    window.addEventListener('load', () => {
-        try {
-            if (typeof L === 'undefined') {
-                alert("🚨地図の読み込みシステムが制限されています。");
-                return;
-            }
-
-            // 1. 地図の初期化（東京駅を中心に設定）
-            const map = L.map('map', {
-                zoomControl: false,
-                fadeAnimation: false
-            }).setView([35.681236, 139.767125], 14);
-
-            // [対策2] 最もセキュリティブロックを受けにくい、日本の高セキュリティ暗号通信(HTTPS)に対応したリアル地図をロード
-            L.tileLayer('https://openstreetmap.jp{z}/{x}/{y}.png', {
-                maxZoom: 18,
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
-
-            // 画面の表示崩れを力技で修正
-            setTimeout(() => { map.invalidateSize(true); }, 300);
-
-            // 3. ピンを追加するモードの状態管理
-            let isAddPinMode = false;
-            const addPinBtn = document.getElementById('add-pin-btn');
-
-            addPinBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                isAddPinMode = !isAddPinMode;
-                if (isAddPinMode) {
-                    addPinBtn.classList.add('active-btn');
-                    addPinBtn.innerText = '🗺️ 地図をタップ';
-                } else {
-                    addPinBtn.classList.remove('active-btn');
-                    addPinBtn.innerText = '📍 ピンを追加';
-                }
-            });
-
-            // 4. 地図をタップしたときにピンを立ててコメントを残す処理（連動復活！）
-            map.on('click', (e) => {
-                if (!isAddPinMode) return;
-
-                setTimeout(() => {
-                    const comment = prompt("この場所に残すコメントを入力してください：");
-                    if (comment !== null && comment.trim() !== "") {
-                        // タップした本物の緯度・経度にピン（マーカー）を立てる
-                        const marker = L.marker(e.latlng).addTo(map);
-                        
-                        // ピンをクリックしたときにコメントの吹き出しが出るように設定
-                        marker.bindPopup(`<b>コメント:</b><br>${comment}`).openPopup();
-                    }
-                    isAddPinMode = false;
-                    addPinBtn.classList.remove('active-btn');
-                    addPinBtn.innerText = '📍 ピンを追加';
-                }, 50);
-            });
-
-            // 5. 現在地GPS処理
-            document.getElementById('current-location-btn').addEventListener('click', (e) => {
-                e.preventDefault();
-                navigator.geolocation.getCurrentPosition((position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    map.setView([lat, lng], 16);
-                }, (error) => {
-                    alert("位置情報の取得に失敗しました。設定を確認してください。");
-                });
-            });
-
-        } catch (err) {
-            console.log(err.message);
+    // 自分のリポジトリのプログラムがスマホ内部で合流するのを待つ命令
+    function checkAndStart() {
+        if (typeof L === 'undefined') {
+            setTimeout(checkAndStart, 200);
+            return;
         }
-    });
+
+        // 1. 地図の初期化（東京駅を中心に設定）
+        const map = L.map('map', {
+            zoomControl: false,
+            fadeAnimation: false
+        }).setView([35.681236, 139.767125], 14);
+
+        // 2. 日本国内の超安全なリアル地図データをロード
+        L.tileLayer('https://openstreetmap.jp{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        setTimeout(() => { map.invalidateSize(true); }, 300);
+
+        // 3. ピン留めモードの状態管理
+        let isAddPinMode = false;
+        const addPinBtn = document.getElementById('add-pin-btn');
+
+        addPinBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            isAddPinMode = !isAddPinMode;
+            if (isAddPinMode) {
+                addPinBtn.classList.add('active-btn');
+                addPinBtn.innerText = '🗺️ 地図をタップ';
+            } else {
+                addPinBtn.classList.remove('active-btn');
+                addPinBtn.innerText = '📍 ピンを追加';
+            }
+        });
+
+        // 4. 地図タップでピン＆コメント
+        map.on('click', (e) => {
+            if (!isAddPinMode) return;
+
+            setTimeout(() => {
+                const comment = prompt("この場所に残すコメントを入力してください：");
+                if (comment !== null && comment.trim() !== "") {
+                    const marker = L.marker(e.latlng).addTo(map);
+                    marker.bindPopup(`<b>コメント:</b><br>${comment}`).openPopup();
+                }
+                isAddPinMode = false;
+                addPinBtn.classList.remove('active-btn');
+                addPinBtn.innerText = '📍 ピンを追加';
+            }, 50);
+        });
+
+        // 5. 現在地GPS処理
+        document.getElementById('current-location-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            navigator.geolocation.getCurrentPosition((position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                map.setView([lat, lng], 16);
+            }, (error) => {
+                alert("位置情報の取得に失敗しました。設定を確認してください。");
+            });
+        });
+    }
+
+    window.addEventListener('load', checkAndStart);
   </script>
 </body>
 </html>
