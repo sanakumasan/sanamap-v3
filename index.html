@@ -311,6 +311,16 @@
   maxNativeZoom: 18     // 地図画像の元データの最大レベル（これを超えると画像を伸ばして拡大表示する）
 }).addTo(map);
 
+      // 目立つカスタムピン（赤色）を作成
+const highlightIcon = L.icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [35, 57],      // アイコンのサイズ（通常より大きめ）
+  iconAnchor: [17, 57],    // ピンの先端の位置
+  popupAnchor: [1, -46],   // 吹き出しの位置
+  shadowSize: [50, 50]
+});
+
       function saveToStorage() {
         localStorage.setItem('sanamap_pins', JSON.stringify(savedPins));
       }
@@ -328,19 +338,22 @@
         return container;
       }
 
-      function addInteractiveMarker(pinData) {
-        const marker = L.marker([pinData.lat, pinData.lng], { draggable: true }).addTo(map);
-        markerMap.set(pinData.id, marker);
+     function addInteractiveMarker(pinData) {
+  // 1. アイコンに highlightIcon を指定し、pinData.lat と pinData.lng を使う
+  const marker = L.marker([pinData.lat, pinData.lng], { icon: highlightIcon, draggable: true }).addTo(map);
+  markerMap.set(pinData.id, marker);
 
-        const popupContent = createPopupContent(pinData.comment);
-        marker.bindPopup(popupContent);
+  // 2. 吹き出しにコメント（またはタイトル）を表示して自動で開く
+  const popupContent = createPopupContent(pinData.comment);
+  marker.bindPopup(popupContent).openPopup();
 
-        marker.on('dragend', (e) => {
-          const newLatLng = e.target.getLatLng();
-          pinData.lat = newLatLng.lat;
-          pinData.lng = newLatLng.lng;
-          saveToStorage();
-        });
+  marker.on('dragend', (e) => {
+    const newLatLng = e.target.getLatLng();
+    pinData.lat = newLatLng.lat;
+    pinData.lng = newLatLng.lng;
+    saveToStorage();
+  });
+}
 
         marker.on('popupopen', () => {
           const popupElement = marker.getPopup().getElement();
